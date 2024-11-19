@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom PDF Viewer with Thumbnails</title>
+  <style>
+    .container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      height: 100vh;
+      margin: 0;
+    }
+    .thumbnail-container {
+      width: 100px;
+      overflow-y: auto;
+      height: 700px;
+      margin-right: 10px;
+    }
+    .pdf-container {
+      width: 500px;
+      height: 700px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow-y: auto;
+      position: relative;
+    }
+    canvas {
+      display: block;
+      margin: 10px 0;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Thumbnails Sidebar -->
+    <div class="thumbnail-container" id="thumbnailContainer"></div>
+
+    <!-- Main PDF Viewer -->
+    <div class="pdf-container" id="pdfContainer"></div>
+  </div>
+
+  <!-- Toggle Width Button -->
+  <button onclick="toggleWidth()">Toggle Width</button>
+
+  <script>
+    let pdfDoc = null;
+    let pageNum = 1;
+    let scale = 1.5;
+    let pdfWidth = 500; // Initial width for PDF viewer
+
+    // Initialize PDF rendering
+    const url = "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf";
+    const thumbnailContainer = document.getElementById("thumbnailContainer");
+    const pdfContainer = document.getElementById("pdfContainer");
+
+    // Load the PDF
+    pdfjsLib.getDocument(url).promise.then((pdf) => {
+      pdfDoc = pdf;
+      renderThumbnails(pdfDoc);
+      renderPage(pageNum);
+    });
+
+    // Render a specific page
+    function renderPage(pageNum) {
+      pdfDoc.getPage(pageNum).then((page) => {
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+
+        const viewport = page.getViewport({ scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        page.render({
+          canvasContext: context,
+          viewport: viewport,
+        }).promise.then(() => {
+          pdfContainer.innerHTML = ""; // Clear previous content
+          pdfContainer.appendChild(canvas);
+        });
+      });
+    }
+
+    // Render thumbnails for all pages
+    function renderThumbnails(pdfDoc) {
+      const numPages = pdfDoc.numPages;
+      for (let i = 1; i <= numPages; i++) {
+        pdfDoc.getPage(i).then((page) => {
+          const canvas = document.createElement("canvas");
+          const context = canvas.getContext("2d");
+
+          const viewport = page.getViewport({ scale: 0.2 }); // Smaller scale for thumbnail
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          page.render({
+            canvasContext: context,
+            viewport: viewport,
+          }).promise.then(() => {
+            canvas.style.cursor = "pointer";
+            canvas.onclick = () => renderPage(i);
+            thumbnailContainer.appendChild(canvas);
+          });
+        });
+      }
+    }
+
+    // Toggle PDF Viewer width
+    function toggleWidth() {
+      pdfWidth = pdfWidth === 500 ? 700 : 500;
+      pdfContainer.style.width = pdfWidth + "px";
+      scale = pdfWidth / 500 * 1.5; // Adjust scale for larger width
+      renderPage(pageNum); // Re-render the current page
+    }
+  </script>
+</body>
+</html>
